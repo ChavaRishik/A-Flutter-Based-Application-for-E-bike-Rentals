@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "1095144756055",
+    "firebase_url": "https://prayana-ev-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "prayana-ev",
+    "storage_bucket": "prayana-ev.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1095144756055:android:5f9f2f2d47340c6e8d6412",
+        "android_client_info": {
+          "package_name": "com.example.prayanaev.prayanaev"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyChKuRTvGVE4y71sMfIi8lcxrkm4xdP1SY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
