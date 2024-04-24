@@ -9,7 +9,10 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:prayanaev/pages/bike_page.dart';
-import 'package:prayanaev/sidebar.dart'; // Import the bike page
+import 'package:prayanaev/sidebar.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'on_ride.dart'; // Import the bike page
 
 class MapPage extends StatefulWidget {
   const MapPage({Key? key}) : super(key: key);
@@ -39,6 +42,7 @@ class _MapPageState extends State<MapPage> {
     super.initState();
     initialPosition = const LatLng(16.494430, 80.499245); // Default position
     _getBikeMarkers(initialPosition, 16.0); // Get bike markers for the default position
+    _checkStoredPreferences();
   }
 
   @override
@@ -54,68 +58,95 @@ class _MapPageState extends State<MapPage> {
       ),
     );
   }
+  Future<void> _checkStoredPreferences() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? bikeId = prefs.getString('bikeId');
+    int? startTime = prefs.getInt('startTime');
+    String? selectedOption = prefs.getString('selectedDestination');
+    if (bikeId != null && startTime != null && selectedOption != null) {
+      // Shared preferences are available, navigate to OnRide page
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => OnRide(bikeId: bikeId,
+            startTime: DateTime.fromMillisecondsSinceEpoch(prefs.getInt('startTime') ?? 0),
+            initialLocation: selectedOption,),
+        ),
+      );
+    } else {
+      // Shared preferences are not available, fetch data and display map page
+      setState(() {
+        initialPosition = const LatLng(16.494430, 80.499245); // Default position
+      });
+      _getBikeMarkers(initialPosition, 16.0);
+    }
+  }
+
 
   Widget _backgroundWidget() {
-    return Stack(
-      children: [
-        GoogleMap(
-          initialCameraPosition: CameraPosition(
-            target: initialPosition,
-            zoom: 16.0,
-          ),
-          markers: _markers,
-          onMapCreated: (GoogleMapController controller) {
-            mapController = controller;
-          },
-          onCameraMove: (CameraPosition position) {
-            _getBikeMarkers(position.target, position.zoom);
-          },
-        ),
-        Positioned(
-          bottom: MediaQuery.of(context).size.height * 0.3,
-          left: 16,
-          child: Container(
-            padding: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.5),
-                  spreadRadius: 1,
-                  blurRadius: 3,
-                  offset: Offset(0, 2), // changes position of shadow
-                ),
-              ],
+    return RefreshIndicator(
+      onRefresh: _refreshData,
+      child: Stack(
+        children: [
+          GoogleMap(
+            initialCameraPosition: CameraPosition(
+              target: initialPosition,
+              zoom: 16.0,
             ),
-            child: Text(
-              '${_bikeData.length} bikes available near you',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
+            markers: _markers,
+            onMapCreated: (GoogleMapController controller) {
+              mapController = controller;
+            },
+            onCameraMove: (CameraPosition position) {
+              _getBikeMarkers(position.target, position.zoom);
+            },
+          ),
+          Positioned(
+            bottom: MediaQuery.of(context).size.height * 0.3,
+            left: 16,
+            child: Container(
+              padding: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.5),
+                    spreadRadius: 1,
+                    blurRadius: 3,
+                    offset: Offset(0, 2), // changes position of shadow
+                  ),
+                ],
+              ),
+              child: Text(
+                '${_bikeData.length} bikes available near you',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ),
-        ),
-        Positioned(
-          bottom: MediaQuery.of(context).size.height * 0.03,
-          left: 16,
-          child: SizedBox(
-            height: 200,
-            width: MediaQuery.of(context).size.width - 32,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: _bikeData.length,
-              itemBuilder: (context, index) {
-                return GestureDetector(
-                  onTap: () => _onCardTapped(_bikeData[index].data()),
-                  child: BikeCard(bike: _bikeData[index].data() as Map<String, dynamic>),
-                );
-              },
+          Positioned(
+            bottom: MediaQuery.of(context).size.height * 0.03,
+            left: 16,
+            child: SizedBox(
+              height: 200,
+              width: MediaQuery.of(context).size.width - 32,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: _bikeData.length,
+                itemBuilder: (context, index) {
+                  return GestureDetector(
+                    onTap: () => _onCardTapped(_bikeData[index].data()),
+                    child: BikeCard(bike: _bikeData[index].data() as Map<String, dynamic>),
+                  );
+                },
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -198,6 +229,15 @@ class _MapPageState extends State<MapPage> {
     IMG.Image resized = IMG.copyResize(img!, width: (markerSize * scale).toInt(), height: (markerSize * scale).toInt());
     return Uint8List.fromList(IMG.encodePng(resized));
   }
+
+  Future<void> _refreshData() async {
+
+    setState(() {
+      //Refreshes the bike markers
+       _getBikeMarkers(initialPosition, 16.0);
+
+    });
+  }
 }
 
 class BikeCard extends StatelessWidget {
@@ -210,8 +250,8 @@ class BikeCard extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.all(8.0),
       child: SizedBox(
-        width: 250, // Adjust the width as needed
-        height: 120, // Doubled the height
+        width: 250,
+        height: 120,
         child: Card(
           elevation: 4,
           child: Container(

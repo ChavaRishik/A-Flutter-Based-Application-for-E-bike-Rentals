@@ -2,6 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_animated_icons/icons8.dart';
 import 'package:lottie/lottie.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'map_page.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:path_provider/path_provider.dart';
+
+import 'dart:io';
 
 class EndRidePage extends StatefulWidget {
   final String bikeId;
@@ -201,10 +207,11 @@ class _EndRidePageState extends State<EndRidePage> with TickerProviderStateMixin
                 backgroundColor: MaterialStateProperty.all<Color>(Color(0xFF69D84F)),
               ),
               child: Text(
-                'Go to Home',
+                'Go To Home',
                 style: TextStyle(color: Colors.white),
               ),
             ),
+
           ],
         ),
       ),
@@ -224,5 +231,41 @@ class _EndRidePageState extends State<EndRidePage> with TickerProviderStateMixin
       throw 'Error fetching wallet balance: $e';
     }
     return balance;
+  }
+  Future<void> _downloadFile() async {
+    try {
+      // Create a storage reference
+      final storageRef = FirebaseStorage.instance.ref();
+
+      // Create a reference to the file you want to download
+      final gsReference = storageRef.child("myImage.png");
+
+      // Get the application directory for storing the downloaded file
+      final appDocDir = await getApplicationDocumentsDirectory();
+      final filePath = "${appDocDir.path}/myImage.png";
+
+      // Create a File object to save the downloaded file
+      final file = File(filePath);
+
+      // Download the file to the local device
+      await gsReference.writeToFile(file);
+
+      // Handle the download completion
+      // You can add your logic here, such as showing a notification or updating UI
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Image downloaded successfully'),
+          duration: Duration(seconds: 3),
+        ),
+      );
+    } catch (e) {
+      // Handle any errors that occur during the download process
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error downloading image: $e'),
+          duration: Duration(seconds: 3),
+        ),
+      );
+    }
   }
 }

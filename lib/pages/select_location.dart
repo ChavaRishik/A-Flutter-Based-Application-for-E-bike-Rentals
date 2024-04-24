@@ -4,6 +4,7 @@ import 'package:chip_list/chip_list.dart';
 import 'package:prayanaev/pages/on_ride.dart'; // Import the chip_list package
 import 'package:firebase_database/firebase_database.dart';
 import 'package:loading_animation_widget/loading_animation_widget.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SelectLocationPage extends StatefulWidget {
 
@@ -16,7 +17,7 @@ class SelectLocationPage extends StatefulWidget {
 }
 
 class _SelectLocationPageState extends State<SelectLocationPage> {
-  String _selectedLocation = 'CB';
+  String _selectedDestination = 'CB';
   List<String> _locations = [
     'AB1',
     'AB2',
@@ -67,12 +68,12 @@ class _SelectLocationPageState extends State<SelectLocationPage> {
             ),
             ChipList(
               listOfChipNames: _locations, // Use the locations list
-              listOfChipIndicesCurrentlySeclected: [_locations.indexOf(_selectedLocation)],
+              listOfChipIndicesCurrentlySeclected: [_locations.indexOf(_selectedDestination)],
               activeBgColorList: [Theme.of(context).primaryColor],
               activeTextColorList: [Colors.white],
               extraOnToggle: (val) {
                 setState(() {
-                  _selectedLocation = _locations[val];
+                  _selectedDestination = _locations[val];
                 });
               },
             ),
@@ -82,7 +83,7 @@ class _SelectLocationPageState extends State<SelectLocationPage> {
                   ? null
                 :() {
                 // Call function to start bike with selected location
-                _startBike(widget.bikeId, _selectedLocation);
+                _startBike(widget.bikeId, _selectedDestination);
               },
 
               style: ButtonStyle(
@@ -103,17 +104,33 @@ class _SelectLocationPageState extends State<SelectLocationPage> {
       ),
     );
   }
-  void _startBike(String bikeId, String selectedLocation) async {
+  void _startBike(String bikeId, String selectedDestination) async {
     try {
       setState(() {
     _isLoading = true; // Start loading animation
     });
+      // Initialize startTime here
+      DateTime startTime = DateTime.now();
+
+      // Save bikeId, selectedLocation, and startTime to SharedPreferences
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.setString('bikeId', bikeId);
+      await prefs.setString('selectedDestination', selectedDestination);
+      await prefs.setInt('startTime', startTime.millisecondsSinceEpoch);
+      print('Bike ID: $bikeId');
+      print('Start Time: $startTime');
+      print('Selected Destination: $selectedDestination');
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$bikeId'),
+          ));
+
       // Create a reference to the Firebase Realtime Database
       DatabaseReference databaseReference = FirebaseDatabase.instance.reference();
       // Push the bike ID into the "BikesNeedToStart" bucket
       databaseReference.child('BikesNeedToStart').push().set({
         'bikeId': bikeId,
-        'selectedLocation': selectedLocation,
+        'selectedLocation': _selectedDestination,
         'status': 'Pending', // You can set status as 'Pending' or any other initial status
       }).then((_) {
         // If push is successful, update the bike status in Firestore
@@ -124,10 +141,10 @@ class _SelectLocationPageState extends State<SelectLocationPage> {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => OnRide(initialLocation: selectedLocation, bikeId: bikeId),
+              builder: (context) => OnRide(initialLocation: _selectedDestination, bikeId: bikeId, startTime: startTime,),
             ),
           );
-          print('Bike $bikeId started at $selectedLocation');
+          print('Bike $bikeId started to $_selectedDestination');
         }).catchError((error) {
           // Handle error if Firestore update fails
           print('Failed to update bike status in Firestore: $error');

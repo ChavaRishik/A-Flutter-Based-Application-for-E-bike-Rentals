@@ -5,14 +5,15 @@ import 'package:geolocator/geolocator.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart'; // Import FirebaseDatabase
+import 'package:shared_preferences/shared_preferences.dart';
 import 'end_ride.dart';
 import 'package:loading_animation_widget/loading_animation_widget.dart';
 
 class OnRide extends StatefulWidget {
   final String initialLocation;
   final String bikeId;
-
-  const OnRide({Key? key, required this.initialLocation, required this.bikeId})
+  final DateTime startTime ;
+  const OnRide({Key? key, required this.initialLocation, required this.bikeId, required this.startTime})
       : super(key: key);
 
   @override
@@ -23,7 +24,7 @@ class _OnRideState extends State<OnRide> {
   late GoogleMapController mapController;
   LatLng? initialPosition;
   Set<Marker> _markers = {};
-  late DateTime _rideStartTime;
+
   late Timer _timer;
   String _rideDuration = '';
   List<String> _locations = [
@@ -41,12 +42,12 @@ class _OnRideState extends State<OnRide> {
   String _selectedLocation = ''; // Define a default selected location
   bool _isLoading = false; // Track loading state
 
+
   @override
   void initState() {
     super.initState();
     _selectedLocation = widget.initialLocation; // Set initial location
     _getUserLocation();
-    _rideStartTime = DateTime.now();
     _startTimer();
   }
 
@@ -66,7 +67,7 @@ class _OnRideState extends State<OnRide> {
 
   void _calculateRideDuration() {
     final now = DateTime.now();
-    final difference = now.difference(_rideStartTime);
+    final difference = now.difference(widget.startTime);
     setState(() {
       _rideDuration = '${difference.inMinutes} : ${difference.inSeconds % 60} s';
     });
@@ -299,7 +300,7 @@ class _OnRideState extends State<OnRide> {
 
       // Calculate ride duration
       final now = DateTime.now();
-      final difference = now.difference(_rideStartTime);
+      final difference = now.difference(widget.startTime);
       String rideDuration = '${difference.inMinutes} : ${difference.inSeconds % 60} s';
 
       // Deduct fare from the wallet balance
@@ -329,7 +330,7 @@ class _OnRideState extends State<OnRide> {
         MaterialPageRoute(
           builder: (context) => EndRidePage(
             bikeId: widget.bikeId,
-            startTime: _rideStartTime,
+            startTime: widget.startTime,
             endTime: now, // Pass the end time
             rideDuration: rideDuration, // Pass the ride duration
             startLatitude: bikeLatitude,
@@ -347,7 +348,7 @@ class _OnRideState extends State<OnRide> {
       // Update ride data in Firestore
       FirebaseFirestore.instance.collection('users').doc(userEmail).collection('past_rides').add({
         'bike_id': widget.bikeId,
-        'start_time': _rideStartTime,
+        'start_time': widget.startTime,
         'end_time': now,
         'start_coordinates': GeoPoint(bikeLatitude, bikeLongitude),
         'end_coordinates': GeoPoint(destinationLatitude, destinationLongitude),
@@ -366,7 +367,7 @@ class _OnRideState extends State<OnRide> {
       // Update ride data in Bikes/BikeId/past_rides
       FirebaseFirestore.instance.collection('Bikes').doc(widget.bikeId).collection('past_rides').add({
         'user_email': userEmail,
-        'start_time': _rideStartTime,
+        'start_time': widget.startTime,
         'end_time': now,
         'start_coordinates': GeoPoint(bikeLatitude, bikeLongitude),
         'end_coordinates': GeoPoint(destinationLatitude, destinationLongitude),
@@ -383,6 +384,13 @@ class _OnRideState extends State<OnRide> {
       }).catchError((error) {
         print('Failed to add bike to BikesNeedToStop: $error');
       });
+
+      Future<void> clearSharedPreferences() async {
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+        await prefs.clear();
+      }
+      clearSharedPreferences();
+
     } catch (e) {
       // Display error message
       ScaffoldMessenger.of(context).showSnackBar(
@@ -391,6 +399,9 @@ class _OnRideState extends State<OnRide> {
         ),
       );
       print('Error ending the ride: $e');
+      setState(() {
+        _isLoading = false; // Stop loading animation
+      });
     }
   }
 }
