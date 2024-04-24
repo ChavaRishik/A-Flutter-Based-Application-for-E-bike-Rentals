@@ -3,7 +3,6 @@ import 'package:flutter/scheduler.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:prayanaev/pages/map_page.dart';
 import 'package:prayanaev/welcomepages/onboardingscreen.dart';
-import 'package:prayanaev/pages/homepage.dart';
 
 class SplashScreen extends StatefulWidget {
   @override
@@ -45,7 +44,7 @@ class _SplashScreenState extends State<SplashScreen>
     FirebaseAuth auth = FirebaseAuth.instance;
     User? user = auth.currentUser;
 
-    SchedulerBinding.instance!.addPostFrameCallback((_) {
+    SchedulerBinding.instance.addPostFrameCallback((_) {
       if (user != null) {
         // If user is signed in, navigate to homepage
         Navigator.of(context).pushReplacement(
