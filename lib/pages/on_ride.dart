@@ -275,7 +275,7 @@ class _OnRideState extends State<OnRide> {
         double userDestinationDistance =
         Geolocator.distanceBetween(userLatitude, userLongitude, destinationLatitude, destinationLongitude);
 
-        if (bikeDestinationDistance > 1000 || bikeUserDistance > 1000 || userDestinationDistance > 1000) {
+        if (bikeDestinationDistance > 100000 || bikeUserDistance > 100000 || userDestinationDistance > 100000) {
           // Display error message if coordinates are not within 10m radius
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
